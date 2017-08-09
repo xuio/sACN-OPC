@@ -1,0 +1,4 @@
+node_modules
+.nexe
+yarn.lock
+

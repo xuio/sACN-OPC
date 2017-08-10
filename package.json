@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "e131": "^1.1.1"
+    "e131": "^1.1.1",
+    "minimist": "^1.2.0"
   }
 }

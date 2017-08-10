@@ -2,33 +2,53 @@ const e131 = require('e131');
 const OPC  = require('./opc.js');
 const argv = require('minimist')(process.argv.slice(2));
 
-const server = new e131.Server();
-const client = new OPC(argv['ip'], 7890);
+// dimensions of the Matrix
+const size = {
+	x: 40,
+	y: 27,
+};
 
-let framebuffer = new Uint8Array(27*40*3);
+const server = new e131.Server([
+	// e131 universes to listen to
+	0x0001,
+	0x0002,
+	0x0003,
+	0x0004,
+	0x0005,
+	0x0006,
+	0x0007,
+	0x0008,
+	0x0009,
+	0x000A,
+	0x000B,
+	0x000C,
+	0x000D,
+	0x000E
+]);
+
+const client = new OPC(argv['ip'] || '127.0.0.1', 7890);
+
+// initialize framebuffer; 3 bytes per pixel
+let framebuffer = new Uint8Array(size.x*size.y*3);
 
 server.on('listening', () => {
-	console.log('server listening on port %d, universes %j', server.port, server.universes);
+	console.log(`server listening on port ${server.port}, universes [${server.universes}]`);
 });
 
-var toType = function(obj) {
-  return ({}).toString.call(obj).match(/\s([a-zA-Z]+)/)[1].toLowerCase()
-}
-
-let universe_ = 0;
-
-server.on('packet', function(packet) {
+// update framebuffer from e131 packet
+const update = (packet) => {
 	const universe = packet.getUniverse();
 	const slotsData = packet.getSlotsData();
 
-	//if(universe == 10) console.log('10!');
-
 	for(let i=0; i < 80*3; i++){
-		//console.log(slotsData[i]);
 		framebuffer[(universe-1)*80*3 + i] = slotsData[i];
 	}
-});
+};
 
+server.on('packet', packet => update(packet));
+server.on('packet-out-of-order', packet => update(packet));
+
+// update OPC client from framebuffer
 setInterval(() => {
 	for(let i=0; i<1080; i++){
 		client.setPixel(i,
@@ -38,5 +58,5 @@ setInterval(() => {
 		);
 	}
 	client.writePixels();
-}, 5);
+}, 1.0 / argv['hz'] * 1000.0 || 5);
 
